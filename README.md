@@ -1,2 +1,4 @@
 # answer-helpfulness-prediction
- Review-guided Helpful Answer Identification in E-commerce (WWW 2020)
+Codes for paper: Review-guided Helpful Answer Identification in E-commerce (WWW 2020)
+
+Coming soon...
