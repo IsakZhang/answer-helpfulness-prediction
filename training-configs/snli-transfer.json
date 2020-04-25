@@ -1,0 +1,85 @@
+{
+    "train_data_path" : "data/snli/snli_1.0_train.jsonl",
+    "validation_data_path" : "data/snli/snli_1.0_dev.jsonl",
+
+    "dataset_reader" : {
+        "type" : "snli_transfer",
+        "token_indexers": {
+            "tokens": {
+                "type": "single_id",
+                "lowercase_tokens": true
+            },
+            "token_characters":{
+                "type": "characters"
+            }
+        },
+        "tokenizer": {
+              "end_tokens": ["@@NULL@@"]
+        }
+    },
+    "model" : {
+        "type" : "snli_siamese",
+        "text_field_embedder" :{
+            "token_embedders" : {
+                "tokens" : {
+                    "type" : "embedding",
+                    "pretrained_file" : "./pretrained-models/glove/glove.6B.300d.txt",
+                    "embedding_dim" : 300,
+                    "trainable" : false
+                },
+                "token_characters": {
+                    "type": "character_encoding",
+                    "embedding": {
+                        "embedding_dim": 12
+                    },
+                    "encoder": {
+                        "type": "cnn",
+                        "embedding_dim": 12,
+                        "num_filters": 50,
+                        "ngram_filter_sizes": [2, 3, 4, 5]
+                    },
+                    "dropout": 0.2
+                }
+            }  
+        },
+        "context_encoder" : {
+            "type" : "lstm",
+            "input_size" : 500,
+            "hidden_size" : 128,
+            "bidirectional" : true,
+            "dropout" : 0.2
+        },
+        "text_encoder_entailment" : {
+            "type" : "lstm",
+            "input_size" : 256,
+            "hidden_size" : 128,
+            "bidirectional" : true,
+            "dropout" : 0.2
+        },
+        "matching_layer" : {
+            "input_dim" : 512,
+            "num_layers" : 2,
+            "hidden_dims" : [300, 3],
+            "activations" : ["relu", "linear"],
+            "dropout" : [0.2, 0.0]
+        },
+        "initializer": [
+          [".*linear_layers.*weight", {"type": "xavier_normal"}]
+         ]
+    },
+    "iterator" : {
+        "type" : "bucket",
+        "sorting_keys" : [["premise", "num_tokens"], ["hypothesis", "num_tokens"]],
+        "batch_size" : 128
+    },
+    "trainer" : {
+        "num_epochs" : 50,
+        "patience" : 5,
+        "cuda_device" : 0,
+        "grad_clipping": 5.0,
+        "validation_metric": "+accuracy",
+        "optimizer": {
+          "type": "adagrad"
+    }
+    }
+}

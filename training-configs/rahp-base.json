@@ -1,0 +1,121 @@
+{
+    "train_data_path" : "data/qa-electronics-train.pickle",
+    "validation_data_path" : "data/qa-electronics-val.pickle",
+
+    "dataset_reader" : {
+        "type" : "qa_review",
+        "token_indexers": {
+            "tokens": {
+                "type": "single_id",
+                "lowercase_tokens": true
+            },
+            "token_characters":{
+                "type": "characters"
+            }
+        }
+    },
+    
+    "model" : {
+        "type" : "rahp",
+        "text_field_embedder" :{
+            "token_embedders" : {
+                "tokens" : {
+                    "type" : "embedding",
+                    "pretrained_file" : "./pretrained-models/glove/glove.6B.300d.txt",
+                    "embedding_dim" : 300,
+                    "trainable" : false
+                },
+                "token_characters": {
+                    "type": "character_encoding",
+                    "embedding": {
+                        "embedding_dim": 12
+                    },
+                    "encoder": {
+                        "type": "cnn",
+                        "embedding_dim": 12,
+                        "num_filters": 50,
+                        "ngram_filter_sizes": [2, 3, 4, 5]
+                    },
+                    "dropout": 0.2
+                }
+            }  
+        },
+        "context_encoder" : {
+            "type" : "lstm",
+            "input_size" : 500,
+            "hidden_size" : 128,
+            "bidirectional" : true,
+            "dropout" : 0.3
+        },
+        "qa_attention_module" : {
+            "type" : "dot_product"
+        },
+        "text_encoder_qa_matching" : {
+            "type" : "lstm",
+            "input_size" : 512,
+            "hidden_size" : 128,
+            "bidirectional" : true,
+            "dropout" : 0.4
+        },
+        "qa_matching_layer" : {
+            "input_dim" : 512,
+            "num_layers" : 2,
+            "hidden_dims" : [200, 85],
+            "activations" : ["relu", "linear"],
+            "dropout" : [0.4, 0.0]
+        },
+        "qr_attention_module" : {
+            "type" : "dot_product"
+        },
+        "text_encoder_ra_entailment" : {
+            "type" : "lstm",
+            "input_size" : 256,
+            "hidden_size" : 128,
+            "bidirectional" : true,
+            "dropout" : 0.4
+        },
+        "ra_matching_layer" : {
+            "input_dim" : 512,
+            "num_layers" : 2,
+            "hidden_dims" : [200, 3],
+            "activations" : ["relu", "linear"],
+            "dropout" : [0.3, 0.0]
+        },
+        "predict_layer" : {
+            "input_dim" : 100,
+            "num_layers" : 2,
+            "hidden_dims" : [50, 2],
+            "activations" : ["relu", "linear"],
+            "dropout" : [0.3, 0.0]
+        },
+        "regularizer": [ 
+             [ ".*scalar_parameters.*", { 
+                     "type": "l2", 
+                     "alpha": 0.0015     } 
+             ] 
+         ],  
+        "initializer": [
+            [".*linear_layers.*weight", {"type": "xavier_uniform"}],
+            [".*linear_layers.*bias", {"type": "zero"}],
+            [".*weight_ih.*", {"type": "xavier_uniform"}],
+            [".*weight_hh.*", {"type": "orthogonal"}],
+            [".*bias_ih.*", {"type": "zero"}],
+            [".*bias_hh.*", {"type": "lstm_hidden_bias"}]
+        ]
+    },
+    "iterator" : {
+        "type" : "bucket",
+        "sorting_keys" : [["answer", "num_tokens"], ["question", "num_tokens"]],
+        "batch_size" : 64
+    },
+    "trainer" : {
+        "num_epochs" : 15,
+        "patience" : 5,
+        "cuda_device" : 0,
+        "validation_metric" : "+f1",
+        "optimizer" : {
+            "type" : "adam",
+            "lr" : 0.002
+        }
+    }
+}
